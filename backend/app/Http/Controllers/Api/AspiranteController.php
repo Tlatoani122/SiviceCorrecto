@@ -40,6 +40,7 @@ class AspiranteController extends Controller
                 'CEDU_PROMEDIO',
                 'CAPTURO',
                 'COLE_RESULTADO',
+                'resultadoExam',
             ]);
 
         if ($request->filled('busqueda')) {
@@ -207,7 +208,7 @@ class AspiranteController extends Controller
             'CEDU_CARRERA' => 'CEDU_CARRERA',
             'CEDU_SEDE' => 'CEDU_SEDE',
             'CAPTURO' => 'CAPTURO',
-            'resultadoExam' => 'COLE_RESULTADO',
+            'resultadoExam' => 'resultadoExam',
         ];
 
         $columna = $columnasPermitidas[$sortBy] ?? 'CODIGO';
@@ -243,6 +244,6 @@ class AspiranteController extends Controller
 
     private function resultadoExam($item): ?string
     {
-        return $item->COLE_RESULTADO ?? null;
+        return $item->resultadoExam ?? null;
     }
 }

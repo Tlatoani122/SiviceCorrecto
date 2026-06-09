@@ -18,4 +18,5 @@ Thumbs.db
 
 # Base local pesada / sensible
 backend/database/legacy/*.db
-backend/database/legacy/migracion_sivice
+backend/database/legacy/migracion_siviceSACE/
+/SACE/

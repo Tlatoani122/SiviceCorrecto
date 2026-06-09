@@ -46,7 +46,6 @@ const pagination = ref({
   to: 0,
 })
 
-
 function paginasVisibles() {
   const total = pagination.value.last_page || 1
   const actual = pagination.value.current_page || 1
@@ -75,8 +74,6 @@ function paginasVisibles() {
 
   return resultado
 }
-
-
 
 async function cargar(newPage = 1) {
   loading.value = true
@@ -151,6 +148,18 @@ function cerrarDetalle() {
   examen.value = null
 }
 
+async function cerrarSesion() {
+  try {
+    await api.post('/logout')
+  } catch (error) {
+    console.warn('No se pudo cerrar sesión en servidor, se limpiará sesión local.', error)
+  } finally {
+    localStorage.removeItem('sivice_token')
+    localStorage.removeItem('sivice_user')
+    window.location.href = '/login'
+  }
+}
+
 function textoSeguro(valor) {
   if (valor === null || valor === undefined || valor === '') return '—'
   return valor
@@ -222,11 +231,12 @@ onBeforeUnmount(() => {
         <div class="sidebar-subtitle">Coordinación General de Control Escolar</div>
       </div>
 
-      <a href="#" class="side-link active-module">PINGRESO</a>
+      <a href="/aspirantes" class="side-link active-module">PINGRESO</a>
+      <a href="/usuarios" class="side-link">USUARIOS</a>
       <a href="#" class="side-link">OFMAYOR</a>
       <a href="#" class="side-link">FASE2</a>
       <a href="#" class="side-link">EGRESOS</a>
-
+      
       <div class="sidebar-divider"></div>
     </aside>
 
@@ -335,35 +345,34 @@ onBeforeUnmount(() => {
                   Página {{ pagination.current_page }} de {{ pagination.last_page }}
                 </span>
 
-               <button class="page-btn" :disabled="pagination.current_page <= 1" @click="cargar(1)">
-  &lt;&lt;
-</button>
+                <button class="page-btn" :disabled="pagination.current_page <= 1" @click="cargar(1)">
+                  &lt;&lt;
+                </button>
 
-<button class="page-btn" :disabled="pagination.current_page <= 1" @click="cargar(pagination.current_page - 1)">
-  &lt;
-</button>
+                <button class="page-btn" :disabled="pagination.current_page <= 1" @click="cargar(pagination.current_page - 1)">
+                  &lt;
+                </button>
 
-<template v-for="item in paginasVisibles()" :key="item">
-  <span v-if="item === '...'" class="page-dots">...</span>
+                <template v-for="item in paginasVisibles()" :key="item">
+                  <span v-if="item === '...'" class="page-dots">...</span>
 
-  <button
-    v-else
-    class="page-btn page-number"
-    :class="{ active: item === pagination.current_page }"
-    @click="cargar(item)"
-  >
-    {{ item }}
-  </button>
-</template>
+                  <button
+                    v-else
+                    class="page-btn page-number"
+                    :class="{ active: item === pagination.current_page }"
+                    @click="cargar(item)"
+                  >
+                    {{ item }}
+                  </button>
+                </template>
 
-<button class="page-btn" :disabled="pagination.current_page >= pagination.last_page" @click="cargar(pagination.current_page + 1)">
-  &gt;
-</button>
+                <button class="page-btn" :disabled="pagination.current_page >= pagination.last_page" @click="cargar(pagination.current_page + 1)">
+                  &gt;
+                </button>
 
-<button class="page-btn" :disabled="pagination.current_page >= pagination.last_page" @click="cargar(pagination.last_page)">
-  &gt;&gt;
-</button>
-
+                <button class="page-btn" :disabled="pagination.current_page >= pagination.last_page" @click="cargar(pagination.last_page)">
+                  &gt;&gt;
+                </button>
               </div>
 
               <div class="results-total">
@@ -372,7 +381,9 @@ onBeforeUnmount(() => {
             </div>
 
             <div class="footer-actions">
-              <a href="#" class="btn-regresar-block">← Regresar</a>
+              <button class="btn-regresar-block" @click="cerrarSesion">
+                Salir del sistema
+              </button>
             </div>
           </div>
         </div>
@@ -769,6 +780,18 @@ onBeforeUnmount(() => {
   cursor: default;
 }
 
+.page-number.active {
+  background-color: #2196f3;
+  border-color: #2196f3;
+  color: #fff;
+}
+
+.page-dots {
+  color: #8b98a8;
+  padding: 0 4px;
+  font-weight: bold;
+}
+
 .dark-select {
   background-color: #252525;
   color: #fff;
@@ -798,6 +821,13 @@ onBeforeUnmount(() => {
   border-radius: 4px;
   font-size: 12px;
   border: 1px solid #444;
+  cursor: pointer;
+}
+
+.btn-regresar-block:hover {
+  background-color: #444;
+  border-color: #64ffda;
+  color: #64ffda;
 }
 
 .modal-overlay {
@@ -965,19 +995,5 @@ onBeforeUnmount(() => {
   .detail-grid {
     grid-template-columns: 1fr;
   }
-
-.page-number.active {
-  background-color: #2196f3;
-  border-color: #2196f3;
-  color: #fff;
-}
-
-.page-dots {
-  color: #8b98a8;
-  padding: 0 4px;
-  font-weight: bold;
-}
-
-
 }
 </style>
