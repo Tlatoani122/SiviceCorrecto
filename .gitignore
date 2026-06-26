@@ -20,3 +20,9 @@ Thumbs.db
 backend/database/legacy/*.db
 backend/database/legacy/migracion_siviceSACE/
 /SACE/
+
+# Bases de datos pesadas y migraciones legadas
+*.db
+*.sqlite
+*.dbf
+backend/database/legacy/

@@ -18,19 +18,11 @@ const sortDir = ref('asc')
 const ciclo = ref('05S')
 
 const calendarios = [
-  '93A', '93B',
-  '94A', '94B', '94S',
-  '95A', '95B', '95S',
-  '96A', '96B', '96S',
-  '97A', '97B', '97S',
-  '98A', '98B', '98S',
-  '99A', '99B', '99S',
-  '00A', '00B', '00C', '00D', '00E',
-  '01A', '01B', '01C',
-  '02A', '02B', '02S',
-  '03A', '03B', '03S', '03T',
-  '04A', '04B', '04S', '04T',
-  '05A', '05S',
+  '93A', '93B', '94A', '94B', '94S', '95A', '95B', '95S',
+  '96A', '96B', '96S', '97A', '97B', '97S', '98A', '98B', '98S',
+  '99A', '99B', '99S', '00A', '00B', '00C', '00D', '00E',
+  '01A', '01B', '01C', '02A', '02B', '02S', '03A', '03B', '03S', 
+  '03T', '04A', '04B', '04S', '04T', '05A', '05S',
 ]
 
 const detalle = ref(null)
@@ -49,29 +41,18 @@ const pagination = ref({
 function paginasVisibles() {
   const total = pagination.value.last_page || 1
   const actual = pagination.value.current_page || 1
-
   const primeras = [1, 2, 3, 4].filter((p) => p <= total)
   const ultimas = [total - 3, total - 2, total - 1, total].filter((p) => p > 0)
-
-  const centro = [
-    actual - 1,
-    actual,
-    actual + 1,
-  ].filter((p) => p > 0 && p <= total)
-
-  const paginas = [...new Set([...primeras, ...centro, ...ultimas])]
-    .sort((a, b) => a - b)
+  const centro = [actual - 1, actual, actual + 1].filter((p) => p > 0 && p <= total)
+  const paginas = [...new Set([...primeras, ...centro, ...ultimas])].sort((a, b) => a - b)
 
   const resultado = []
-
   paginas.forEach((pagina, index) => {
     if (index > 0 && pagina - paginas[index - 1] > 1) {
       resultado.push('...')
     }
-
     resultado.push(pagina)
   })
-
   return resultado
 }
 
@@ -84,23 +65,25 @@ async function cargar(newPage = 1) {
       page: page.value,
       per_page: perPage.value,
       busqueda: busqueda.value,
-      calendario: busquedaGlobal.value ? '' : ciclo.value,
+      calendario: ciclo.value,
+      global: busquedaGlobal.value ? 1 : 0,
       sort_by: sortBy.value,
       sort_dir: sortDir.value,
     }
 
-    const { data } = await api.get('/aspirantes', { params })
+    const response = await api.get('/aspirantes', { params })
+    const paginator = response.data
 
-    registros.value = data.data ?? []
+    registros.value = paginator.data ?? []
     pagination.value = {
-      current_page: data.current_page,
-      last_page: data.last_page,
-      total: data.total,
-      from: data.from,
-      to: data.to,
+      current_page: paginator.current_page || 1,
+      last_page: paginator.last_page || 1,
+      total: paginator.total || 0,
+      from: paginator.from || 0,
+      to: paginator.to || 0,
     }
   } catch (error) {
-    console.error('Error cargando aspirantes:', error)
+    console.error('Error crítico cargando aspirantes de la API:', error)
     registros.value = []
   } finally {
     loading.value = false
@@ -114,8 +97,8 @@ async function verDetalle(id) {
   examen.value = null
 
   try {
-    const { data } = await api.get(`/aspirantes/${id}`)
-    detalle.value = data
+    const response = await api.get(`/aspirantes/${id}`)
+    detalle.value = response.data
   } catch (error) {
     console.error('Error cargando detalle:', error)
     detalle.value = null
@@ -125,14 +108,15 @@ async function verDetalle(id) {
 }
 
 async function verExamen() {
-  if (!detalle.value?.ID) return
+  const obtId = detalle.value?.ID || detalle.value?.id;
+  if (!obtId) return
 
   cargandoExamen.value = true
   mostrarExamen.value = true
 
   try {
-    const { data } = await api.get(`/aspirantes/${detalle.value.ID}/examen`)
-    examen.value = data
+    const response = await api.get(`/aspirantes/${obtId}/examen`)
+    examen.value = response.data
   } catch (error) {
     console.error('Error cargando examen:', error)
     examen.value = null
@@ -152,7 +136,7 @@ async function cerrarSesion() {
   try {
     await api.post('/logout')
   } catch (error) {
-    console.warn('No se pudo cerrar sesión en servidor, se limpiará sesión local.', error)
+    console.warn('Limpiando sesión local.', error)
   } finally {
     localStorage.removeItem('sivice_token')
     localStorage.removeItem('sivice_user')
@@ -177,7 +161,6 @@ function ordenarPor(columna) {
     sortBy.value = columna
     sortDir.value = 'asc'
   }
-
   cargar(1)
 }
 
@@ -193,25 +176,16 @@ function cerrarConEscape(event) {
 }
 
 let timer = null
-
 watch(busqueda, () => {
-  clearTimeout(timer)
+  if (timer) clearTimeout(timer)
   timer = setTimeout(() => {
     cargar(1)
   }, 450)
 })
 
-watch(perPage, () => {
-  cargar(1)
-})
-
-watch(ciclo, () => {
-  cargar(1)
-})
-
-watch(busquedaGlobal, () => {
-  cargar(1)
-})
+watch(perPage, () => { cargar(1) })
+watch(ciclo, () => { cargar(1) })
+watch(busquedaGlobal, () => { cargar(1) })
 
 onMounted(() => {
   window.addEventListener('keydown', cerrarConEscape)
@@ -219,6 +193,7 @@ onMounted(() => {
 })
 
 onBeforeUnmount(() => {
+  if (timer) clearTimeout(timer)
   window.removeEventListener('keydown', cerrarConEscape)
 })
 </script>
@@ -226,18 +201,30 @@ onBeforeUnmount(() => {
 <template>
   <div class="app-shell">
     <aside class="sidebar">
-      <div class="sidebar-header">
-        <div class="sidebar-title-main">SIVICE</div>
-        <div class="sidebar-subtitle">Coordinación General de Control Escolar</div>
-      </div>
+      <div class="sidebar-top-content">
+        <div class="sidebar-header">
+          <div class="sidebar-title-main">SIVICE</div>
+          <div class="sidebar-subtitle">Coordinación General de Control Escolar</div>
+        </div>
 
-      <a href="/aspirantes" class="side-link active-module">PINGRESO</a>
-      <a href="/usuarios" class="side-link">USUARIOS</a>
-      <a href="#" class="side-link">OFMAYOR</a>
-      <a href="#" class="side-link">FASE2</a>
-      <a href="#" class="side-link">EGRESOS</a>
+        <nav class="sidebar-nav">
+          <a href="/aspirantes" class="side-link active-module">
+            <i class="fas fa-user-graduate"></i> PINGRESO
+          </a>
+          <a href="/usuarios" class="side-link">
+            <i class="fas fa-users"></i> USUARIOS
+          </a>
+          <a href="#" class="side-link"><i class="fas fa-folder"></i> OFMAYOR</a>
+          <a href="#" class="side-link"><i class="fas fa-layer-group"></i> FASE2</a>
+          <a href="#" class="side-link"><i class="fas fa-door-open"></i> EGRESOS</a>
+        </nav>
+      </div>
       
-      <div class="sidebar-divider"></div>
+      <div class="sidebar-footer-btn">
+        <button class="btn-logout-sidebar" @click="cerrarSesion">
+          <i class="fas fa-sign-out-alt"></i> Salir del sistema
+        </button>
+      </div>
     </aside>
 
     <main class="main-panel">
@@ -264,13 +251,16 @@ onBeforeUnmount(() => {
                 Toda la base
               </label>
 
-              <input
-                v-model="busqueda"
-                type="text"
-                placeholder="Búsqueda rápida..."
-                class="quick-search-input"
-                @keyup.enter="cargar(1)"
-              />
+              <div class="search-input-container">
+                <i class="fas fa-search search-icon"></i>
+                <input
+                  v-model="busqueda"
+                  type="text"
+                  placeholder="Buscar por código o nombre completo..."
+                  class="quick-search-input"
+                  @keyup.enter="cargar(1)"
+                />
+              </div>
 
               <button class="quick-search-btn" @click="cargar(1)">
                 BUSCAR
@@ -279,26 +269,46 @@ onBeforeUnmount(() => {
           </div>
 
           <div class="table-scroll-container">
-            <table class="dark-table">
+            <table class="suite-table">
               <thead>
                 <tr>
                   <th class="reg-header">Reg</th>
-                  <th @click="ordenarPor('nombreCompleto')">NOMBRE COMPLETO {{ iconoOrden('nombreCompleto') }}</th>
-                  <th @click="ordenarPor('CODIGO')">CÓDIGO {{ iconoOrden('CODIGO') }}</th>
-                  <th @click="ordenarPor('CALENDARIO')">CALENDARIO {{ iconoOrden('CALENDARIO') }}</th>
-                  <th @click="ordenarPor('CEDU_CARRERA')">CARRERA {{ iconoOrden('CEDU_CARRERA') }}</th>
-                  <th @click="ordenarPor('CEDU_SEDE')">SEDE {{ iconoOrden('CEDU_SEDE') }}</th>
-                  <th @click="ordenarPor('CEDU_GRADO')">GRADO {{ iconoOrden('CEDU_GRADO') }}</th>
-                  <th @click="ordenarPor('CEDU_PROMEDIO')">PROMEDIO {{ iconoOrden('CEDU_PROMEDIO') }}</th>
-                  <th @click="ordenarPor('CAPTURO')">CAPTURÓ {{ iconoOrden('CAPTURO') }}</th>
-                  <th @click="ordenarPor('resultadoExam')">RESULTADO {{ iconoOrden('resultadoExam') }}</th>
-                  <th>VER</th>
+                  <th @click="ordenarPor('nombreCompleto')" class="sortable-th">
+                    NOMBRE COMPLETO <span class="order-icon">{{ iconoOrden('nombreCompleto') }}</span>
+                  </th>
+                  <th @click="ordenarPor('CODIGO')" class="sortable-th">
+                    CÓDIGO <span class="order-icon">{{ iconoOrden('CODIGO') }}</span>
+                  </th>
+                  <th @click="ordenarPor('CALENDARIO')" class="sortable-th">
+                    CALENDARIO <span class="order-icon">{{ iconoOrden('CALENDARIO') }}</span>
+                  </th>
+                  <th @click="ordenarPor('CEDU_CARRERA')" class="sortable-th">
+                    CARRERA <span class="order-icon">{{ iconoOrden('CEDU_CARRERA') }}</span>
+                  </th>
+                  <th @click="ordenarPor('CEDU_SEDE')" class="sortable-th">
+                    SEDE <span class="order-icon">{{ iconoOrden('CEDU_SEDE') }}</span>
+                  </th>
+                  <th @click="ordenarPor('CEDU_GRADO')" class="sortable-th">
+                    GRADO <span class="order-icon">{{ iconoOrden('CEDU_GRADO') }}</span>
+                  </th>
+                  <th @click="ordenarPor('CEDU_PROMEDIO')" class="sortable-th">
+                    PROMEDIO <span class="order-icon">{{ iconoOrden('CEDU_PROMEDIO') }}</span>
+                  </th>
+                  <th @click="ordenarPor('CAPTURO')" class="sortable-th">
+                    CAPTURÓ <span class="order-icon">{{ iconoOrden('CAPTURO') }}</span>
+                  </th>
+                  <th @click="ordenarPor('resultadoExam')" class="sortable-th">
+                    RESULTADO <span class="order-icon">{{ iconoOrden('resultadoExam') }}</span>
+                  </th>
+                  <th class="text-center">ACCIONES</th>
                 </tr>
               </thead>
 
               <tbody>
                 <tr v-if="loading">
-                  <td colspan="11" class="empty-state">Cargando registros...</td>
+                  <td colspan="11" class="empty-state">
+                    <i class="fas fa-spinner fa-spin"></i> Cargando registros del inventario...
+                  </td>
                 </tr>
 
                 <tr v-else-if="registros.length === 0">
@@ -307,20 +317,24 @@ onBeforeUnmount(() => {
                   </td>
                 </tr>
 
-                <tr v-else v-for="(asp, index) in registros" :key="asp.ID">
+                <tr v-else v-for="(asp, index) in registros" :key="'asp-' + (asp.ID || index)">
                   <td class="reg-cell">{{ numeroRegistro(index) }}</td>
-                  <td class="name-cell">{{ textoSeguro(asp.nombreCompleto) }}</td>
-                  <td>{{ textoSeguro(asp.CODIGO) }}</td>
+                  <td class="name-cell font-medium">{{ textoSeguro(asp.nombreCompleto) }}</td>
+                  <td class="font-mono font-bold text-dark">{{ textoSeguro(asp.CODIGO) }}</td>
                   <td>{{ textoSeguro(asp.CALENDARIO) }}</td>
                   <td>{{ textoSeguro(asp.CEDU_CARRERA) }}</td>
                   <td>{{ textoSeguro(asp.CEDU_SEDE) }}</td>
                   <td>{{ textoSeguro(asp.CEDU_GRADO) }}</td>
                   <td>{{ textoSeguro(asp.CEDU_PROMEDIO) }}</td>
-                  <td>{{ textoSeguro(asp.CAPTURO) }}</td>
-                  <td>{{ textoSeguro(asp.resultadoExam) }}</td>
+                  <td class="text-muted">{{ textoSeguro(asp.CAPTURO) }}</td>
+                  <td>
+                    <span :class="['badge-status', asp.resultadoExam === 'Admitido' ? 'admitido' : 'no-admitido']">
+                      {{ textoSeguro(asp.resultadoExam) }}
+                    </span>
+                  </td>
                   <td class="action-cell">
                     <button class="detail-btn" @click="verDetalle(asp.ID)" title="Ver expediente">
-                      👁
+                      <i class="far fa-eye"></i> Ver
                     </button>
                   </td>
                 </tr>
@@ -334,28 +348,26 @@ onBeforeUnmount(() => {
 
               <div class="pagination-controls">
                 <span>Filas por página:</span>
-
-                <select v-model="perPage" class="dark-select">
+                <select v-model="perPage" class="suite-select">
                   <option :value="50">50</option>
                   <option :value="100">100</option>
                   <option :value="200">200</option>
                 </select>
 
-                <span>
+                <span class="page-indicator">
                   Página {{ pagination.current_page }} de {{ pagination.last_page }}
                 </span>
 
                 <button class="page-btn" :disabled="pagination.current_page <= 1" @click="cargar(1)">
-                  &lt;&lt;
+                  <i class="fas fa-angle-double-left"></i>
                 </button>
 
                 <button class="page-btn" :disabled="pagination.current_page <= 1" @click="cargar(pagination.current_page - 1)">
-                  &lt;
+                  <i class="fas fa-angle-left"></i>
                 </button>
 
-                <template v-for="item in paginasVisibles()" :key="item">
+                <template v-for="(item, idx) in paginasVisibles()" :key="'page-' + idx">
                   <span v-if="item === '...'" class="page-dots">...</span>
-
                   <button
                     v-else
                     class="page-btn page-number"
@@ -367,23 +379,17 @@ onBeforeUnmount(() => {
                 </template>
 
                 <button class="page-btn" :disabled="pagination.current_page >= pagination.last_page" @click="cargar(pagination.current_page + 1)">
-                  &gt;
+                  <i class="fas fa-angle-right"></i>
                 </button>
 
                 <button class="page-btn" :disabled="pagination.current_page >= pagination.last_page" @click="cargar(pagination.last_page)">
-                  &gt;&gt;
+                  <i class="fas fa-angle-double-right"></i>
                 </button>
               </div>
 
               <div class="results-total">
                 {{ Number(pagination.total || 0).toLocaleString() }} resultados en total.
               </div>
-            </div>
-
-            <div class="footer-actions">
-              <button class="btn-regresar-block" @click="cerrarSesion">
-                Salir del sistema
-              </button>
             </div>
           </div>
         </div>
@@ -393,21 +399,26 @@ onBeforeUnmount(() => {
     <div v-if="mostrarDetalle" class="modal-overlay" @click.self="cerrarDetalle">
       <div class="modal-card">
         <div class="modal-header">
-          <div>
-            <h2>Expediente del aspirante</h2>
-            <p v-if="detalle">{{ detalle.nombreCompleto }}</p>
+          <div class="header-user-info">
+            <div class="user-avatar">
+              <i class="fas fa-user-graduate"></i>
+            </div>
+            <div>
+              <h2>Expediente del aspirante</h2>
+              <p v-if="detalle" class="modal-user-name">{{ detalle.nombreCompleto }}</p>
+            </div>
           </div>
 
           <div class="modal-actions">
             <button class="btn-examen" @click="verExamen" :disabled="cargandoExamen">
-              Examen de admisión
+              <i class="fas fa-file-alt"></i> Examen de admisión
             </button>
-            <button class="btn-close" @click="cerrarDetalle">✕</button>
+            <button class="btn-close" @click="cerrarDetalle">&times;</button>
           </div>
         </div>
 
         <div v-if="cargandoDetalle" class="modal-loading">
-          Cargando detalle...
+          <i class="fas fa-circle-notch fa-spin"></i> Leyendo información del expediente...
         </div>
 
         <div v-else-if="detalle" class="modal-body">
@@ -421,45 +432,36 @@ onBeforeUnmount(() => {
             <div class="detail-item full"><span>DOMICILIO</span><strong>{{ textoSeguro(detalle.DOMICILIO) }}</strong></div>
             <div class="detail-item"><span>COLONIA</span><strong>{{ textoSeguro(detalle.COLONIA) }}</strong></div>
             <div class="detail-item"><span>CP</span><strong>{{ textoSeguro(detalle.CP) }}</strong></div>
-            <div class="detail-item"><span>TELÉFONO</span><strong>{{ textoSeguro(detalle.TELEFONO) }}</strong></div>
+            <div class="detail-item phone-highlight"><span>TELÉFONO</span><strong>{{ textoSeguro(detalle.TELEFONO) }}</strong></div>
             <div class="detail-item"><span>ESTADO</span><strong>{{ textoSeguro(detalle.ESTA_VIV) }}</strong></div>
           </div>
 
           <div v-if="mostrarExamen" class="exam-panel">
-            <div class="exam-title">EXAMEN DE ADMISIÓN</div>
+            <div class="exam-title"><i class="fas fa-star"></i> DETALLES DEL EXAMEN DE ADMISIÓN</div>
 
             <div v-if="cargandoExamen" class="modal-loading">
-              Cargando examen...
+              <i class="fas fa-circle-notch fa-spin"></i> Cargando puntajes...
             </div>
 
             <div v-else-if="examen" class="detail-grid">
               <div class="detail-item"><span>FECHA EXAMEN</span><strong>{{ textoSeguro(examen.COLE_FECHA_EX) }}</strong></div>
-              <div class="detail-item"><span>APELLIDO PATERNO</span><strong>{{ textoSeguro(examen.COLE_APE_P) }}</strong></div>
-              <div class="detail-item"><span>APELLIDO MATERNO</span><strong>{{ textoSeguro(examen.COLE_APE_M) }}</strong></div>
-              <div class="detail-item"><span>NOMBRE</span><strong>{{ textoSeguro(examen.COLE_NOMBR) }}</strong></div>
-              <div class="detail-item"><span>FEC. NAC</span><strong>{{ textoSeguro(examen.COLE_FEC_NAC) }}</strong></div>
               <div class="detail-item"><span>HABILIDAD</span><strong>{{ textoSeguro(examen.COLE_HABILIDAD) }}</strong></div>
-              <div class="detail-item"><span>RESULTADO</span><strong>{{ textoSeguro(examen.resultadoExam) }}</strong></div>
+              <div class="detail-item"><span>RESULTADO RAW</span><strong>{{ textoSeguro(examen.COLE_RESULTADO) }}</strong></div>
               <div class="detail-item"><span>ESPAÑOL</span><strong>{{ textoSeguro(examen.COLE_ESPANIOL) }}</strong></div>
               <div class="detail-item"><span>MATEMÁTICAS</span><strong>{{ textoSeguro(examen.COLE_MATEMAT) }}</strong></div>
               <div class="detail-item"><span>INGLÉS</span><strong>{{ textoSeguro(examen.COLE_INGLES) }}</strong></div>
               <div class="detail-item"><span>GRAMÁTICA</span><strong>{{ textoSeguro(examen.COLE_GRAMATICA) }}</strong></div>
               <div class="detail-item"><span>LITERATURA</span><strong>{{ textoSeguro(examen.COLE_LITERATURA) }}</strong></div>
               <div class="detail-item"><span>ÁLGEBRA B</span><strong>{{ textoSeguro(examen.COLE_ALGEBRA_B) }}</strong></div>
-              <div class="detail-item"><span>ÁLGEBRA I</span><strong>{{ textoSeguro(examen.COLE_ALGEBRA_I) }}</strong></div>
               <div class="detail-item"><span>GEOMETRÍA</span><strong>{{ textoSeguro(examen.COLE_GEOMETRIA) }}</strong></div>
-              <div class="detail-item"><span>VOCABULARIO</span><strong>{{ textoSeguro(examen.COLE_VOCABULARI) }}</strong></div>
-              <div class="detail-item"><span>GRAMÁTICA I</span><strong>{{ textoSeguro(examen.COLE_GRAMATICAI) }}</strong></div>
               <div class="detail-item"><span>LECTURA</span><strong>{{ textoSeguro(examen.COLE_LECTUR) }}</strong></div>
-              <div class="detail-item"><span>NÚMERO CB</span><strong>{{ textoSeguro(examen.COLE_NUMEROCB) }}</strong></div>
-              <div class="detail-item"><span>TIPO</span><strong>{{ textoSeguro(examen.COLE_TIPO) }}</strong></div>
-              <div class="detail-item"><span>RESULTADO RAW</span><strong>{{ textoSeguro(examen.COLE_RESULTADO) }}</strong></div>
+              <div class="detail-item"><span>TIPO EXAMEN</span><strong>{{ textoSeguro(examen.COLE_TIPO) }}</strong></div>
             </div>
           </div>
         </div>
 
-        <div v-else class="modal-loading">
-          No se pudo cargar el expediente.
+        <div v-else class="modal-loading error-state">
+          <i class="fas fa-exclamation-triangle"></i> No se pudo vincular el expediente seleccionado.
         </div>
       </div>
     </div>
@@ -477,93 +479,151 @@ onBeforeUnmount(() => {
 }
 
 :global(body) {
-  background: #05080f;
-  font-family: Arial, Helvetica, sans-serif;
-  color: #e5eef8;
+  background: #f1f5f9;
+  font-family: system-ui, -apple-system, sans-serif;
+  color: #1e293b;
 }
 
 .app-shell {
   display: grid;
-  grid-template-columns: 245px 1fr;
+  grid-template-columns: 260px 1fr; /* Mantiene la barra lateral fija a la izquierda siempre */
   width: 100vw;
   height: 100vh;
-  background: #06090f;
+  background: #f8fafc;
   overflow: hidden;
 }
 
 .sidebar {
   height: 100vh;
-  overflow-y: auto;
-  background: linear-gradient(180deg, #17181d 0%, #101217 100%);
-  border-right: 1px solid #222d39;
+  background: #ffffff;
+  border-right: 1px solid #e2e8f0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between; /* Empuja el botón "Salir" perfectamente al extremo inferior */
+  box-sizing: border-box;
+}
+
+.sidebar-top-content {
   display: flex;
   flex-direction: column;
 }
 
 .sidebar-header {
-  padding: 14px 16px 12px;
-  border-bottom: 1px solid #222d39;
+  padding: 20px 24px;
+  border-bottom: 1px solid #f1f5f9;
 }
 
 .sidebar-title-main {
-  color: #58a6ff;
+  color: #1d4ed8;
   font-weight: 700;
-  font-size: 27px;
+  font-size: 24px;
+  letter-spacing: 0.5px;
 }
 
 .sidebar-subtitle {
-  color: #8998a8;
+  color: #64748b;
   font-size: 11px;
-  margin-top: 3px;
+  margin-top: 4px;
+  line-height: 1.3;
+}
+
+.sidebar-nav {
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
 .side-link {
-  display: block;
-  padding: 12px 16px;
-  color: #b8c6d6;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 16px;
+  color: #475569;
   text-decoration: none;
-  border-bottom: 1px solid #1b2430;
-  font-size: 13px;
+  font-size: 14px;
+  font-weight: 500;
+  border-radius: 8px;
+  transition: all 0.2s;
+}
+
+.side-link i {
+  font-size: 1.1rem;
+  color: #94a3b8;
+}
+
+.side-link:hover {
+  background: #f1f5f9;
+  color: #0f172a;
 }
 
 .active-module {
-  color: #64ffda;
-  font-weight: bold;
-  background: rgba(100, 255, 218, 0.06);
-  border-left: 3px solid #64ffda;
+  color: #1d4ed8;
+  font-weight: 600;
+  background: #eff6ff;
 }
 
-.sidebar-divider {
-  height: 1px;
-  background: #1b2430;
+.active-module i {
+  color: #1d4ed8;
+}
+
+/* CONTENEDOR FIJO PARA EL BOTÓN DE LOGOUT (Evita desalineaciones) */
+.sidebar-footer-btn {
+  padding: 16px 14px;
+  border-top: 1px solid #f1f5f9;
+  background: #ffffff;
+}
+
+.btn-logout-sidebar {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 16px;
+  background: transparent;
+  color: #ef4444;
+  border: 1px solid transparent;
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: 8px;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.2s;
+  box-sizing: border-box;
+}
+
+.btn-logout-sidebar:hover {
+  background: #fef2f2;
+  border-color: #fca5a5;
 }
 
 .main-panel {
   height: 100vh;
   min-width: 0;
   overflow: hidden;
-  background: #05080f;
+  background: #f8fafc;
   display: flex;
   flex-direction: column;
 }
 
 .module-bar {
   flex-shrink: 0;
-  border-bottom: 1px solid #1a2430;
-  background: #080b10;
+  border-bottom: 1px solid #e2e8f0;
+  background: #ffffff;
 }
 
 .module-title {
-  padding: 8px 22px;
-  font-size: 13px;
-  letter-spacing: 4px;
-  color: #d9dee4;
+  padding: 14px 24px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 3px;
+  color: #475569;
 }
 
 .content-area {
   flex: 1;
   min-height: 0;
-  padding: 10px 16px 12px;
+  padding: 16px 24px;
   overflow: hidden;
   display: flex;
 }
@@ -574,266 +634,296 @@ onBeforeUnmount(() => {
   min-height: 0;
   display: flex;
   flex-direction: column;
-  background: linear-gradient(180deg, #151515 0%, #101010 100%);
-  border: 1px solid #242424;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.02);
   overflow: hidden;
 }
 
 .page-header {
   flex-shrink: 0;
-  border-bottom: 1px solid #2d2d2d;
-  padding: 9px 14px;
+  padding: 16px 20px;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 12px;
+  gap: 16px;
+  background: #ffffff;
+  border-bottom: 1px solid #f1f5f9;
 }
 
 .page-title {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 700;
-  color: #12a0ff;
+  color: #334155;
 }
 
 .quick-search {
   display: flex;
-  gap: 5px;
+  gap: 10px;
   align-items: center;
 }
 
-.calendar-select,
-.quick-search-input {
-  background: #0d2238;
-  border: 1px solid #1e4263;
-  color: #fff;
-  padding: 6px 8px;
-  border-radius: 4px;
-  font-size: 12px;
-}
-
 .calendar-select {
-  width: 80px;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  color: #0f172a;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  width: 90px;
+  cursor: pointer;
+}
+
+.search-input-container {
+  position: relative;
+  width: 280px;
+}
+
+.search-icon {
+  position: absolute;
+  left: 12px;
+  top: 11px;
+  color: #94a3b8;
+  font-size: 0.9rem;
 }
 
 .quick-search-input {
-  width: 230px;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  color: #0f172a;
+  padding: 8px 12px 8px 36px;
+  border-radius: 8px;
+  font-size: 13px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.quick-search-input:focus {
+  outline: none;
+  border-color: #3b82f6;
 }
 
 .global-check {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  color: #8ecaff;
-  font-size: 12px;
-  white-space: nowrap;
-}
-
-.global-check input {
-  accent-color: #2196f3;
+  gap: 6px;
+  color: #475569;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
 }
 
 .quick-search-btn {
-  background: #15304a;
-  color: #2196f3;
-  border: 1px solid #2196f3;
-  padding: 6px 10px;
-  border-radius: 4px;
+  background: #ffffff;
+  color: #1d4ed8;
+  border: 1px solid #1d4ed8;
+  padding: 8px 16px;
+  border-radius: 8px;
   cursor: pointer;
-  font-size: 12px;
+  font-size: 13px;
+  font-weight: 600;
+  transition: all 0.2s;
+}
+
+.quick-search-btn:hover {
+  background: #1d4ed8;
+  color: #ffffff;
 }
 
 .table-scroll-container {
   flex: 1;
   min-height: 0;
   overflow: auto;
-  border-top: 1px solid #252525;
-  border-bottom: 1px solid #252525;
-  background-color: #141414;
-  margin: 10px 14px 0;
+  background-color: #ffffff;
+  margin: 0 20px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
 }
 
-.dark-table {
+.suite-table {
   width: 100%;
   border-collapse: collapse;
-  min-width: 1260px;
+  min-width: 1300px;
 }
 
-.dark-table th {
+.suite-table th {
   position: sticky;
   top: 0;
-  background-color: #252525;
+  background-color: #f8fafc;
   z-index: 2;
-  padding: 8px 9px;
+  padding: 12px 14px;
   text-align: left;
-  color: #e0e0e0;
-  border-bottom: 2px solid #444;
-  font-size: 12px;
+  color: #475569;
+  font-weight: 600;
+  border-bottom: 2px solid #e2e8f0;
+  font-size: 13px;
+}
+
+.sortable-th {
+  cursor: pointer;
   user-select: none;
 }
 
-.dark-table th:not(:last-child):not(.reg-header) {
-  cursor: pointer;
+.sortable-th:hover {
+  background-color: #f1f5f9 !important;
+  color: #1d4ed8;
 }
 
-.dark-table th:not(:last-child):not(.reg-header):hover {
-  color: #64ffda;
-  background-color: #303030;
+.order-icon {
+  color: #94a3b8;
+  margin-left: 4px;
 }
 
-.dark-table td {
-  padding: 8px 9px;
-  border-bottom: 1px solid #222;
-  color: #bfc7d1;
-  font-size: 12px;
+.suite-table td {
+  padding: 12px 14px;
+  border-bottom: 1px solid #f1f5f9;
+  color: #334155;
+  font-size: 13px;
 }
 
-.dark-table tr:hover td {
-  background-color: #202020;
-  color: #fff;
+.suite-table tr:hover td {
+  background-color: #f8fafc;
 }
 
 .reg-header,
 .reg-cell {
-  width: 54px;
-  min-width: 54px;
+  width: 60px;
   text-align: center;
-  white-space: nowrap;
 }
 
 .reg-cell {
-  color: #64ffda;
-  font-weight: 700;
+  color: #64748b;
+  font-weight: 600;
 }
 
-.name-cell {
-  text-align: left;
-}
+.font-medium { font-weight: 500; }
+.font-mono { font-family: monospace; font-size: 14px; }
+.font-bold { font-weight: 700; }
+.text-dark { color: #0f172a; }
+.text-muted { color: #64748b; }
 
-.action-cell {
-  text-align: center;
+.badge-status {
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 600;
+  display: inline-block;
+}
+.badge-status.admitido {
+  background: #dcfce7;
+  color: #15803d;
+}
+.badge-status.no-admitido {
+  background: #fee2e2;
+  color: #b91c1c;
 }
 
 .detail-btn {
-  background: #15304a;
-  color: #64ffda;
-  border: 1px solid #64ffda;
-  border-radius: 4px;
+  background: #ffffff;
+  color: #1d4ed8;
+  border: 1px solid #1d4ed8;
+  border-radius: 6px;
   cursor: pointer;
-  padding: 3px 7px;
+  padding: 5px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  transition: all 0.2s;
+}
+
+.detail-btn:hover {
+  background: #1d4ed8;
+  color: #ffffff;
 }
 
 .empty-state {
   text-align: center;
-  padding: 35px;
-  color: #666;
+  padding: 40px;
+  color: #94a3b8;
+  font-size: 14px;
 }
 
 .controls-footer {
   flex-shrink: 0;
-  padding: 9px 14px 10px;
-  background-color: #111111;
+  padding: 14px 20px;
+  background-color: #ffffff;
+  border-top: 1px solid #f1f5f9;
 }
 
 .pagination-footer {
-  display: grid;
-  grid-template-columns: 1fr auto 1fr;
+  display: flex;
+  justify-content: space-between;
   align-items: center;
-  margin-bottom: 7px;
-  gap: 8px;
-}
-
-.pagination-spacer {
-  min-width: 1px;
+  gap: 16px;
 }
 
 .pagination-controls {
   display: flex;
   align-items: center;
-  font-size: 12px;
-  color: #b8c0cc;
-  flex-wrap: wrap;
-  gap: 6px;
+  font-size: 13px;
+  color: #475569;
+  gap: 8px;
+}
+
+.suite-select {
+  background-color: #ffffff;
+  color: #0f172a;
+  border: 1px solid #cbd5e1;
+  padding: 5px 10px;
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.page-indicator {
+  margin: 0 4px;
+  color: #64748b;
 }
 
 .page-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 28px;
-  height: 28px;
-  border: 1px solid #444;
-  background: #252525;
-  color: #fff;
-  border-radius: 4px;
-  font-weight: bold;
-  font-size: 12px;
+  min-width: 32px;
+  height: 32px;
+  border: 1px solid #e2e8f0;
+  background: #ffffff;
+  color: #475569;
+  border-radius: 6px;
+  font-size: 13px;
   cursor: pointer;
+  transition: all 0.2s;
 }
 
 .page-btn:hover:not(:disabled) {
-  background-color: #2196f3;
-  border-color: #2196f3;
+  background-color: #1d4ed8;
+  color: #ffffff;
+  border-color: #1d4ed8;
 }
 
 .page-btn:disabled {
-  opacity: 0.5;
-  cursor: default;
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 
 .page-number.active {
-  background-color: #2196f3;
-  border-color: #2196f3;
-  color: #fff;
-}
-
-.page-dots {
-  color: #8b98a8;
-  padding: 0 4px;
-  font-weight: bold;
-}
-
-.dark-select {
-  background-color: #252525;
-  color: #fff;
-  border: 1px solid #444;
-  padding: 4px 6px;
-  border-radius: 4px;
-  font-size: 12px;
+  background-color: #1d4ed8;
+  border-color: #1d4ed8;
+  color: #ffffff;
 }
 
 .results-total {
-  font-weight: 700;
-  color: #fff;
-  font-size: 12px;
-  justify-self: end;
-}
-
-.footer-actions {
-  margin-top: 4px;
-}
-
-.btn-regresar-block {
-  display: inline-block;
-  padding: 6px 16px;
-  background-color: #333;
-  color: #fff;
-  text-decoration: none;
-  border-radius: 4px;
-  font-size: 12px;
-  border: 1px solid #444;
-  cursor: pointer;
-}
-
-.btn-regresar-block:hover {
-  background-color: #444;
-  border-color: #64ffda;
-  color: #64ffda;
+  font-weight: 600;
+  color: #334155;
+  font-size: 13px;
 }
 
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.74);
+  background: rgba(15, 23, 42, 0.25);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -842,83 +932,105 @@ onBeforeUnmount(() => {
 }
 
 .modal-card {
-  width: min(1100px, 96vw);
-  max-height: 92vh;
+  width: min(850px, 95vw);
+  max-height: 88vh;
   overflow: auto;
-  background: #0d1420;
-  border: 1px solid #24405f;
-  border-radius: 10px;
-  box-shadow: 0 10px 40px rgba(0,0,0,0.45);
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  border-radius: 16px;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.08), 0 10px 10px -5px rgba(0, 0, 0, 0.03);
+  animation: fadeIn 0.25s ease-out;
 }
 
 .modal-header {
   position: sticky;
   top: 0;
-  background: #0d1420;
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(4px);
   z-index: 2;
   display: flex;
   justify-content: space-between;
-  gap: 16px;
-  padding: 14px 18px;
-  border-bottom: 1px solid #203347;
+  padding: 20px 24px;
+  border-bottom: 1px solid #e2e8f0;
   align-items: center;
+}
+
+.header-user-info {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.user-avatar {
+  width: 46px;
+  height: 46px;
+  background: #eff6ff;
+  color: #1d4ed8;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.4rem;
 }
 
 .modal-header h2 {
   margin: 0;
-  color: #64ffda;
-  font-size: 19px;
+  color: #0f172a;
+  font-size: 17px;
+  font-weight: 700;
 }
 
-.modal-header p {
-  margin: 5px 0 0;
-  color: #dce8f5;
-}
-
-.modal-actions {
-  display: flex;
-  gap: 10px;
-  align-items: center;
+.modal-user-name {
+  margin: 3px 0 0;
+  color: #1d4ed8;
+  font-weight: 600;
+  font-size: 14px;
 }
 
 .btn-examen {
-  background: #15304a;
-  color: #64ffda;
-  border: 1px solid #64ffda;
-  padding: 8px 14px;
+  background: #ffffff;
+  color: #1d4ed8;
+  border: 1px solid #1d4ed8;
+  padding: 7px 14px;
   border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
   cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-examen:hover {
+  background: #eff6ff;
 }
 
 .btn-close {
-  background: #31161a;
-  color: #ff9ea0;
-  border: 1px solid #c05f66;
-  padding: 8px 12px;
-  border-radius: 6px;
+  background: transparent;
+  color: #94a3b8;
+  border: none;
+  font-size: 24px;
   cursor: pointer;
+  padding: 0 4px;
 }
 
-.modal-loading {
-  padding: 24px 18px;
-  color: #cbd5e1;
+.btn-close:hover {
+  color: #475569;
 }
 
 .modal-body {
-  padding: 16px 18px 20px;
+  padding: 24px;
 }
 
 .detail-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(220px, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(3, minmax(200px, 1fr));
+  gap: 16px;
 }
 
 .detail-item {
-  background: #101d2b;
-  border: 1px solid #203347;
-  border-radius: 8px;
-  padding: 10px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 12px;
 }
 
 .detail-item.full {
@@ -928,72 +1040,46 @@ onBeforeUnmount(() => {
 .detail-item span {
   display: block;
   font-size: 11px;
-  color: #8ecaff;
-  margin-bottom: 5px;
+  font-weight: 700;
+  color: #64748b;
+  margin-bottom: 4px;
+  text-transform: uppercase;
 }
 
 .detail-item strong {
-  color: #fff;
-  font-size: 13px;
-  font-weight: 600;
+  color: #0f172a;
+  font-size: 14px;
+  font-weight: 500;
 }
 
+.phone-highlight {
+  grid-column: span 2;
+  background: #f0fdf4;
+  border-color: #bbf7d0;
+}
+.phone-highlight span { color: #166534; }
+.phone-highlight strong { color: #15803d; font-size: 16px; font-weight: 700; letter-spacing: 0.5px; }
+
 .exam-panel {
-  margin-top: 20px;
-  border-top: 1px solid #203347;
-  padding-top: 16px;
+  margin-top: 24px;
+  border-top: 1px solid #e2e8f0;
+  padding-top: 20px;
 }
 
 .exam-title {
-  color: #ffcc80;
-  font-size: 15px;
+  color: #b45309;
+  font-size: 14px;
   font-weight: 700;
-  margin-bottom: 12px;
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
-@media (max-width: 1100px) {
-  .app-shell {
-    grid-template-columns: 1fr;
-    overflow: auto;
-  }
-
-  .sidebar {
-    height: auto;
-  }
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
-@media (max-width: 768px) {
-  :global(html),
-  :global(body),
-  :global(#app) {
-    overflow: auto;
-  }
-
-  .app-shell {
-    height: auto;
-    min-height: 100vh;
-  }
-
-  .content-area {
-    padding: 8px;
-  }
-
-  .page-header {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .quick-search {
-    width: 100%;
-    flex-wrap: wrap;
-  }
-
-  .quick-search-input {
-    width: 100%;
-  }
-
-  .detail-grid {
-    grid-template-columns: 1fr;
-  }
-}
+/* ELIMINADA la media query disruptiva para asegurar consistencia del layout de escritorio */
 </style>

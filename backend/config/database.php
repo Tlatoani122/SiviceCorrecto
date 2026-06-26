@@ -54,6 +54,20 @@ return [
             'engine' => null,
         ],
 
+    'mysql_db' => [
+        'driver' => 'mysql',
+        'host' => env('DB_HOST_DB', '127.0.0.1'),
+        'port' => env('DB_PORT_DB', '3306'),
+        'database' => env('DB_DATABASE_DB', 'sivice_db'), // Apunta a sivice_db
+        'username' => env('DB_USERNAME_DB', 'root'),
+        'password' => env('DB_PASSWORD_DB', ''),
+        'charset' => 'utf8mb4',
+        'collation' => 'utf8mb4_unicode_ci',
+        'prefix' => '',
+        'strict' => true,
+        'engine' => null,
+    ],
+
         'legacy' => [
             'driver' => 'mysql',
             'host' => env('LEGACY_DB_HOST', '127.0.0.1'),

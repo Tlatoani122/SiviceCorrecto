@@ -1,46 +1,47 @@
 @echo off
-title Iniciando SIVICE...
+title Iniciar SIVICE
+color 0A
 
-echo ================================
-echo Iniciando XAMPP...
-echo ================================
+echo ============================================
+echo   INICIANDO SIVICE
+echo ============================================
 
+echo Cerrando procesos anteriores...
+taskkill /F /IM php.exe >nul 2>&1
+taskkill /F /IM node.exe >nul 2>&1
+
+echo Deteniendo MariaDB externo si existe...
+net stop MariaDB >nul 2>&1
+
+echo Abriendo XAMPP...
 start "" "C:\xampp\xampp-control.exe"
 
-timeout /t 5
+echo Esperando XAMPP...
+timeout /t 6 /nobreak >nul
 
-echo ================================
-echo Iniciando Backend Laravel...
-echo ================================
+echo Verificando puerto MySQL 3306...
+netstat -ano | findstr :3306
 
-start cmd /k "cd /d C:\xampp\htdocs\SIVICE\backend && php artisan serve"
+echo.
+echo Iniciando Laravel...
+start "SIVICE Backend Laravel" cmd /k "cd /d C:\xampp\htdocs\SIVICE\backend && php artisan optimize:clear && php artisan serve --host=127.0.0.1 --port=8000"
 
-timeout /t 3
+timeout /t 6 /nobreak >nul
 
-echo ================================
-echo Iniciando Frontend Vue...
-echo ================================
+echo.
+echo Iniciando Vue...
+start "SIVICE Frontend Vue" cmd /k "cd /d C:\xampp\htdocs\SIVICE\frontend && npm run dev"
 
-:: Se asume que la carpeta frontend también está dentro de SIVICE en htdocs
-start cmd /k "cd /d C:\xampp\htdocs\SIVICE\frontend && npm run dev"
+timeout /t 8 /nobreak >nul
 
-timeout /t 5
+echo.
+echo Abriendo Visual Studio Code...
+start "" "C:\Users\2949665\AppData\Local\Programs\Microsoft VS Code\Code.exe" "C:\xampp\htdocs\SIVICE"
 
-echo ================================
-echo Abriendo VS Code...
-echo ================================
+echo.
+echo Abriendo SIVICE...
+start "" "http://localhost:5173/login"
 
-start "" "C:\Users\2949665\AppData\Local\Programs\Microsoft VS Code\Code.exe" "C:\xampp\htdocs\SIVICE\siviceVSC.code-workspace"
-
-timeout /t 5
-
-echo ================================
-echo Abriendo navegador...
-echo ================================
-
-start "" "http://localhost:5173"
-
-echo ================================
-echo SIVICE listo 🚀
-echo ================================
+echo.
+echo SISTEMA INICIADO.
 pause

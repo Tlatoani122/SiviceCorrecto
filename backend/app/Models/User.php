@@ -8,13 +8,20 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
-// 👇 IMPORTANTE
+// IMPORTANTE
 use Laravel\Sanctum\HasApiTokens;
 
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
     use HasApiTokens, HasFactory, Notifiable;
+
+    /**
+     * CORRECCIÓN DE CONEXIÓN:
+     * Forzamos a que este modelo interactúe EXCLUSIVAMENTE con la conexión 'mysql' (sivice_app)
+     * de modo que nunca intente guardar usuarios en 'sivice_db' ni en 'legacy_sqlite'.
+     */
+    protected $connection = 'mysql';
 
     /**
      * The attributes that are mass assignable.
@@ -25,6 +32,7 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'username', // 👈 Agregado aquí para permitir la inserción segura desde el controlador
     ];
 
     /**

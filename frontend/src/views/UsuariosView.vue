@@ -127,11 +127,17 @@ onMounted(() => {
         <div class="sidebar-subtitle">Coordinación General de Control Escolar</div>
       </div>
 
-      <a href="/aspirantes" class="side-link">PINGRESO</a>
-      <a href="/usuarios" class="side-link active-module">USUARIOS</a>
-      <a href="#" class="side-link">OFMAYOR</a>
-      <a href="#" class="side-link">FASE2</a>
-      <a href="#" class="side-link">EGRESOS</a>
+      <nav class="sidebar-nav">
+        <a href="/aspirantes" class="side-link">
+          <i class="fas fa-user-graduate"></i> PINGRESO
+        </a>
+        <a href="/usuarios" class="side-link active-module">
+          <i class="fas fa-users"></i> USUARIOS
+        </a>
+        <a href="#" class="side-link"><i class="fas fa-folder"></i> OFMAYOR</a>
+        <a href="#" class="side-link"><i class="fas fa-layer-group"></i> FASE2</a>
+        <a href="#" class="side-link"><i class="fas fa-door-open"></i> EGRESOS</a>
+      </nav>
     </aside>
 
     <main class="main-panel">
@@ -145,7 +151,7 @@ onMounted(() => {
             <span class="page-title">ADMINISTRACIÓN DE USUARIOS</span>
 
             <button class="btn-secondary" @click="volverAspirantes">
-              Volver a PINGRESO
+              <i class="fas fa-arrow-left"></i> Volver a PINGRESO
             </button>
           </div>
 
@@ -153,36 +159,45 @@ onMounted(() => {
             <form class="user-form" @submit.prevent="guardarUsuario">
               <h2>{{ editandoId ? 'Editar usuario' : 'Crear usuario' }}</h2>
 
-              <label>Nombre</label>
-              <input v-model="form.name" type="text" required />
+              <div class="input-group">
+                <label>Nombre</label>
+                <input v-model="form.name" type="text" required placeholder="Nombre completo" />
+              </div>
 
-              <label>Correo / Usuario</label>
-              <input v-model="form.email" type="email" required />
+              <div class="input-group">
+                <label>Correo / Usuario</label>
+                <input v-model="form.email" type="email" required placeholder="ejemplo@udg.mx" />
+              </div>
 
-              <label>Contraseña</label>
-              <input
-                v-model="form.password"
-                type="password"
-                :required="!editandoId"
-                placeholder="Mínimo 8 caracteres"
-              />
+              <div class="input-group">
+                <label>Contraseña</label>
+                <input
+                  v-model="form.password"
+                  type="password"
+                  :required="!editandoId"
+                  placeholder="Mínimo 8 caracteres"
+                />
+              </div>
 
-              <label>Confirmar contraseña</label>
-              <input
-                v-model="form.password_confirmation"
-                type="password"
-                :required="!editandoId"
-              />
+              <div class="input-group">
+                <label>Confirmar contraseña</label>
+                <input
+                  v-model="form.password_confirmation"
+                  type="password"
+                  :required="!editandoId"
+                  placeholder="Repite la contraseña"
+                />
+              </div>
 
-              <div v-if="error" class="alert error">{{ error }}</div>
-              <div v-if="mensaje" class="alert success">{{ mensaje }}</div>
+              <div v-if="error" class="alert error"><i class="fas fa-exclamation-circle"></i> {{ error }}</div>
+              <div v-if="mensaje" class="alert success"><i class="fas fa-check-circle"></i> {{ mensaje }}</div>
 
               <div class="form-actions">
                 <button type="submit" class="btn-primary" :disabled="guardando">
                   {{ guardando ? 'Guardando...' : (editandoId ? 'Actualizar' : 'Crear usuario') }}
                 </button>
 
-                <button type="button" class="btn-secondary" @click="limpiarFormulario">
+                <button type="button" class="btn-clean" @click="limpiarFormulario">
                   Limpiar
                 </button>
               </div>
@@ -192,41 +207,43 @@ onMounted(() => {
               <h2>Usuarios registrados</h2>
 
               <div v-if="loading" class="empty-state">
-                Cargando usuarios...
+                <i class="fas fa-spinner fa-spin"></i> Cargando usuarios...
               </div>
 
-              <table v-else class="users-table">
-                <thead>
-                  <tr>
-                    <th>Nombre</th>
-                    <th>Correo</th>
-                    <th>Creado</th>
-                    <th>Acciones</th>
-                  </tr>
-                </thead>
+              <div v-else class="table-container">
+                <table class="users-table">
+                  <thead>
+                    <tr>
+                      <th>Nombre</th>
+                      <th>Correo</th>
+                      <th>Creado</th>
+                      <th class="text-center">Acciones</th>
+                    </tr>
+                  </thead>
 
-                <tbody>
-                  <tr v-if="usuarios.length === 0">
-                    <td colspan="4" class="empty-state">
-                      No hay usuarios registrados.
-                    </td>
-                  </tr>
+                  <tbody>
+                    <tr v-if="usuarios.length === 0">
+                      <td colspan="4" class="empty-state">
+                        No hay usuarios registrados.
+                      </td>
+                    </tr>
 
-                  <tr v-for="usuario in usuarios" :key="usuario.id">
-                    <td>{{ usuario.name }}</td>
-                    <td>{{ usuario.email }}</td>
-                    <td>{{ usuario.created_at }}</td>
-                    <td class="actions-cell">
-                      <button class="btn-small" @click="editarUsuario(usuario)">
-                        Editar
-                      </button>
-                      <button class="btn-small danger" @click="eliminarUsuario(usuario)">
-                        Eliminar
-                      </button>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
+                    <tr v-for="usuario in usuarios" :key="usuario.id">
+                      <td class="font-medium">{{ usuario.name }}</td>
+                      <td class="text-muted">{{ usuario.email }}</td>
+                      <td class="text-muted">{{ new Date(usuario.created_at).toLocaleDateString() }}</td>
+                      <td class="actions-cell">
+                        <button class="btn-action edit" @click="editarUsuario(usuario)">
+                          <i class="far fa-edit"></i> Editar
+                        </button>
+                        <button class="btn-action danger" @click="eliminarUsuario(usuario)">
+                          <i class="far fa-trash-alt"></i> Eliminar
+                        </button>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         </div>
@@ -242,216 +259,296 @@ onMounted(() => {
   margin: 0;
   width: 100%;
   height: 100%;
+  overflow: hidden;
 }
 
 :global(body) {
-  background: #05080f;
-  font-family: Arial, Helvetica, sans-serif;
-  color: #e5eef8;
+  background: #f1f5f9;
+  font-family: system-ui, -apple-system, sans-serif;
+  color: #1e293b;
 }
 
 .usuarios-page {
   display: grid;
-  grid-template-columns: 245px 1fr;
+  grid-template-columns: 260px 1fr;
   width: 100vw;
   height: 100vh;
-  background: #06090f;
+  background: #f8fafc;
   overflow: hidden;
 }
 
 .sidebar {
   height: 100vh;
   overflow-y: auto;
-  background: linear-gradient(180deg, #17181d 0%, #101217 100%);
-  border-right: 1px solid #222d39;
+  background: #ffffff;
+  border-right: 1px solid #e2e8f0;
+  display: flex;
+  flex-direction: column;
 }
 
 .sidebar-header {
-  padding: 14px 16px 12px;
-  border-bottom: 1px solid #222d39;
+  padding: 20px 24px;
+  border-bottom: 1px solid #f1f5f9;
 }
 
 .sidebar-title-main {
-  color: #58a6ff;
+  color: #1d4ed8;
   font-weight: 700;
-  font-size: 27px;
+  font-size: 24px;
+  letter-spacing: 0.5px;
 }
 
 .sidebar-subtitle {
-  color: #8998a8;
+  color: #64748b;
   font-size: 11px;
-  margin-top: 3px;
+  margin-top: 4px;
+  line-height: 1.3;
+}
+
+.sidebar-nav {
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
 .side-link {
-  display: block;
-  padding: 12px 16px;
-  color: #b8c6d6;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 16px;
+  color: #475569;
   text-decoration: none;
-  border-bottom: 1px solid #1b2430;
-  font-size: 13px;
+  font-size: 14px;
+  font-weight: 500;
+  border-radius: 8px;
+  transition: all 0.2s;
+}
+
+.side-link i {
+  font-size: 1.1rem;
+  color: #94a3b8;
+}
+
+.side-link:hover {
+  background: #f1f5f9;
+  color: #0f172a;
 }
 
 .active-module {
-  color: #64ffda;
-  font-weight: bold;
-  background: rgba(100, 255, 218, 0.06);
-  border-left: 3px solid #64ffda;
+  color: #1d4ed8;
+  font-weight: 600;
+  background: #eff6ff;
+}
+
+.active-module i {
+  color: #1d4ed8;
 }
 
 .main-panel {
   height: 100vh;
   min-width: 0;
   overflow: hidden;
-  background: #05080f;
+  background: #f8fafc;
   display: flex;
   flex-direction: column;
 }
 
 .module-bar {
   flex-shrink: 0;
-  border-bottom: 1px solid #1a2430;
-  background: #080b10;
+  border-bottom: 1px solid #e2e8f0;
+  background: #ffffff;
 }
 
 .module-title {
-  padding: 8px 22px;
-  font-size: 13px;
-  letter-spacing: 4px;
-  color: #d9dee4;
+  padding: 14px 24px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 3px;
+  color: #475569;
 }
 
 .content-area {
   flex: 1;
   min-height: 0;
-  padding: 10px 16px 12px;
-  overflow: auto;
+  padding: 16px 24px;
+  overflow: hidden;
   display: flex;
 }
 
 .content-wrapper {
   width: 100%;
-  min-height: 100%;
-  background: linear-gradient(180deg, #151515 0%, #101010 100%);
-  border: 1px solid #242424;
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+  overflow: hidden;
 }
 
 .page-header {
-  border-bottom: 1px solid #2d2d2d;
-  padding: 12px 14px;
+  flex-shrink: 0;
+  padding: 16px 20px;
   display: flex;
   justify-content: space-between;
   align-items: center;
+  background: #ffffff;
+  border-bottom: 1px solid #f1f5f9;
 }
 
 .page-title {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 700;
-  color: #12a0ff;
+  color: #334155;
+}
+
+.btn-secondary {
+  background: #ffffff;
+  color: #475569;
+  border: 1px solid #cbd5e1;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-secondary:hover {
+  background: #f8fafc;
+  color: #0f172a;
 }
 
 .usuarios-layout {
   display: grid;
   grid-template-columns: 360px 1fr;
-  gap: 18px;
-  padding: 18px;
+  gap: 20px;
+  padding: 20px;
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
 }
 
 .user-form,
 .users-card {
-  background: #0d1420;
-  border: 1px solid #24405f;
-  border-radius: 10px;
-  padding: 18px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.01);
+  display: flex;
+  flex-direction: column;
 }
 
 h2 {
-  margin: 0 0 16px;
-  color: #64ffda;
-  font-size: 17px;
+  margin: 0 0 20px;
+  color: #0f172a;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.input-group {
+  margin-bottom: 16px;
 }
 
 label {
   display: block;
-  color: #8ecaff;
-  font-size: 12px;
-  margin-bottom: 5px;
+  color: #475569;
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 6px;
 }
 
 input {
   width: 100%;
   box-sizing: border-box;
-  background: #0d2238;
-  border: 1px solid #1e4263;
-  color: #fff;
-  padding: 9px;
-  border-radius: 5px;
-  margin-bottom: 12px;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  color: #0f172a;
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  transition: all 0.2s;
 }
 
 input:focus {
   outline: none;
-  border-color: #64ffda;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59,130,246,0.1);
 }
 
 .form-actions {
   display: flex;
-  gap: 8px;
+  gap: 10px;
+  margin-top: 8px;
 }
 
-button {
+.btn-primary {
+  background: #3b82f6;
+  color: #ffffff;
+  border: none;
+  padding: 10px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
   cursor: pointer;
+  transition: background-color 0.2s;
 }
 
-.btn-primary,
-.btn-secondary,
-.btn-small {
-  background: #15304a;
-  color: #64ffda;
-  border: 1px solid #64ffda;
-  padding: 8px 12px;
-  border-radius: 5px;
-  font-size: 12px;
-}
-
-.btn-secondary {
-  color: #fff;
-  border-color: #444;
-  background: #333;
+.btn-primary:hover {
+  background: #2563eb;
 }
 
 .btn-primary:disabled {
-  opacity: 0.6;
-  cursor: default;
+  background: #94a3b8;
+  cursor: not-allowed;
 }
 
-.btn-small {
-  padding: 5px 9px;
+.btn-clean {
+  background: #ffffff;
+  color: #64748b;
+  border: 1px solid #cbd5e1;
+  padding: 10px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
 }
 
-.btn-small.danger {
-  background: #31161a;
-  color: #ff9ea0;
-  border-color: #c05f66;
+.btn-clean:hover {
+  background: #f8fafc;
+  color: #334155;
 }
 
 .alert {
-  padding: 9px;
-  border-radius: 5px;
-  font-size: 12px;
-  margin-bottom: 12px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .alert.error {
-  background: #3e1a1a;
-  color: #ff8a80;
-  border: 1px solid #703232;
+  background: #fef2f2;
+  color: #991b1b;
+  border: 1px solid #fee2e2;
 }
 
 .alert.success {
-  background: #123225;
-  color: #64ffda;
-  border: 1px solid #2f7d60;
+  background: #f0fdf4;
+  color: #166534;
+  border: 1px solid #bbf7d0;
+}
+
+.table-container {
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  overflow: auto;
 }
 
 .users-table {
@@ -461,46 +558,65 @@ button {
 
 .users-table th,
 .users-table td {
-  padding: 9px;
-  border-bottom: 1px solid #222;
-  font-size: 12px;
+  padding: 12px 14px;
+  border-bottom: 1px solid #f1f5f9;
+  font-size: 13px;
   text-align: left;
 }
 
 .users-table th {
-  background: #252525;
-  color: #e0e0e0;
+  background: #f8fafc;
+  color: #475569;
+  font-weight: 600;
 }
 
-.users-table td {
-  color: #bfc7d1;
-}
+.font-medium { font-weight: 500; color: #0f172a; }
+.text-muted { color: #64748b; }
 
 .actions-cell {
   display: flex;
-  gap: 6px;
+  gap: 8px;
+  justify-content: center;
+}
+
+.btn-action {
+  background: #ffffff;
+  color: #3b82f6;
+  border: 1px solid #3b82f6;
+  padding: 5px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-action:hover {
+  background: #3b82f6;
+  color: #ffffff;
+}
+
+.btn-action.danger {
+  color: #ef4444;
+  border-color: #fca5a5;
+}
+
+.btn-action.danger:hover {
+  background: #ef4444;
+  color: #ffffff;
+  border-color: #ef4444;
 }
 
 .empty-state {
-  padding: 20px;
-  color: #8b98a8;
+  padding: 40px;
+  color: #94a3b8;
   text-align: center;
+  font-size: 14px;
 }
 
 @media (max-width: 1000px) {
-  .usuarios-page {
-    grid-template-columns: 1fr;
-    height: auto;
-    min-height: 100vh;
-    overflow: auto;
-  }
-
-  .sidebar {
-    height: auto;
-  }
-
-  .usuarios-layout {
-    grid-template-columns: 1fr;
-  }
+  .usuarios-page { grid-template-columns: 1fr; }
+  .sidebar { height: auto; }
+  .usuarios-layout { grid-template-columns: 1fr; }
 }
 </style>

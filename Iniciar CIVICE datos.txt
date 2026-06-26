@@ -1,0 +1,8 @@
+cd C:\xampp\htdocs\SIVICE\backend
+php artisan serve
+
+
+
+
+cd C:\xampp\htdocs\SIVICE\frontend
+npm run dev
